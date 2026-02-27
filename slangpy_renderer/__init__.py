@@ -56,6 +56,9 @@ from .renderers import (
     ColoredMeshRenderer
 )
 
+# Offscreen rendering
+from .offscreen import OffscreenContext
+
 # Camera controllers
 from .controllers import ArcBall, FirstPersonView
 
@@ -80,6 +83,9 @@ __all__ = [
     "PointcloudSpritesRenderer",
     "MeshRenderer",
     "ColoredMeshRenderer",
+
+    # Offscreen rendering
+    "OffscreenContext",
 
     # Controllers
     "ArcBall",

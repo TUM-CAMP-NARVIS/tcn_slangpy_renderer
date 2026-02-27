@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools>=77.0.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "slangpy-renderer"
+version = "0.1.0"
+requires-python = ">=3.10"
+dependencies = [
+    "slangpy>=0.40.1",
+    "numpy>=1.26.0",
+    "PyGLM",
+    "trimesh",
+    "Pillow",
+]
+description = "Standalone 3D rendering library built on SlangPy/Vulkan"
+readme = "README.md"
+
+[project.optional-dependencies]
+cuda = ["cupy-cuda12x"]
+dev = ["pytest", "pytest-xdist"]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["slangpy_renderer*"]
+
+[tool.setuptools.package-data]
+slangpy_renderer = ["assets/**/*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

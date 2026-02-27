@@ -12,7 +12,6 @@ from pathlib import Path
 
 import slangpy as spy
 import numpy as np
-import cupy as cp
 
 from .renderables import Renderable, Pointcloud, Mesh, ColoredMesh
 from .renderers import (
@@ -91,6 +90,13 @@ class SlangWindow:
         self.asset_root_dir = asset_root_dir
 
         # Initialize CUDA/Vulkan interop
+        try:
+            import cupy as cp
+        except ImportError:
+            raise ImportError(
+                "CuPy is required for SlangWindow (CUDA/Vulkan interop). "
+                "Install it with: pip install slangpy-renderer[cuda]"
+            )
         with cp.cuda.Device(0):
             _ = cp.zeros((1,), dtype=cp.uint8)  # forces context creation if not existent
             device_handle = spy.get_cuda_current_context_native_handles()

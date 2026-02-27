@@ -3,13 +3,11 @@ Pointcloud renderable data class.
 """
 import slangpy as spy
 import numpy as np
-import cupy as cp
 import trimesh
 from PIL.Image import Image
 import threading
 
 from .base import Renderable
-from ..utils.cuda_helpers import copy_cupy_array_into_slangpy_buffer
 
 
 class Pointcloud(Renderable):
@@ -149,6 +147,8 @@ class Pointcloud(Renderable):
         Call this once per frame from the main rendering thread
         before dispatching shaders.
         """
+        from ..utils.cuda_helpers import copy_cupy_array_into_slangpy_buffer
+
         with self.buffer_lock:
             if self.is_dirty:
                 # Re-use your existing logic but applied to the staged data
@@ -197,8 +197,12 @@ class Pointcloud(Renderable):
                         ))
                         self.texture = self.device.create_texture(desc)
 
-                    # Copy via CPU memory for now until clean CUDA-to-texture method is found
-                    host_image = cp.asnumpy(image)
+                    # Copy via CPU — handle both cupy and numpy arrays
+                    if hasattr(image, "get"):
+                        # CuPy array — convert to numpy
+                        host_image = image.get()
+                    else:
+                        host_image = np.asarray(image)
                     self.texture.copy_from_numpy(host_image)
 
                     self._pending_data['image'] = None
