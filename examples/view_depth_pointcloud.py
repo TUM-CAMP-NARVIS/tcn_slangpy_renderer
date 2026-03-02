@@ -4,7 +4,7 @@
 Loads depth and color images from test data, unprojects the depth image to a
 3D pointcloud using the GPU XY lookup table pipeline, projects each point into
 the color camera's image plane to produce UV coordinates, and renders the
-result with textured billboard sprites.
+result with normal-oriented textured hexagonal surfels.
 
 Controls:
     Left-click + drag          Rotate
@@ -15,7 +15,7 @@ Controls:
 Usage::
 
     python examples/view_depth_pointcloud.py
-    python examples/view_depth_pointcloud.py --width 1280 --height 960 --point-size 0.005
+    python examples/view_depth_pointcloud.py --width 1280 --height 960 --sprite-scale 2.0
 
 No CuPy/CUDA required — uses a plain Vulkan device.
 """
@@ -39,7 +39,7 @@ from slangpy_renderer import (
     Pointcloud,
 )
 from slangpy_renderer.controllers import ArcBall
-from slangpy_renderer.renderers import PointcloudSpritesRenderer
+from slangpy_renderer.renderers import PointcloudSurfelRenderer
 
 
 DATA_DIR = Path(__file__).resolve().parent.parent / "tests" / "data"
@@ -94,7 +94,8 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("--width", type=int, default=1024, help="Window width")
     parser.add_argument("--height", type=int, default=768, help="Window height")
     parser.add_argument(
-        "--point-size", type=float, default=0.004, help="Sprite size in clip space"
+        "--sprite-scale", type=float, default=1.5,
+        help="Surfel size multiplier (1.5 = slight overlap)"
     )
     args = parser.parse_args(argv)
 
@@ -154,6 +155,7 @@ def main(argv: list[str] | None = None) -> None:
     pointcloud = Pointcloud(device, sync_gpu=False)
     pointcloud.position_buffer = unprojector.position_buffer
     pointcloud.uv_buffer = unprojector.texcoord_buffer
+    pointcloud.normal_buffer = unprojector.normal_buffer
     # vertices attribute provides vertex count (.size) and depth dimensions (.shape)
     pointcloud.vertices = np.empty((dh, dw), dtype=np.uint8)
 
@@ -174,7 +176,7 @@ def main(argv: list[str] | None = None) -> None:
     pointcloud.texture = color_texture
 
     # --- Create renderer ---
-    renderer = PointcloudSpritesRenderer(device, output_format)
+    renderer = PointcloudSurfelRenderer(device, output_format)
     pointcloud.renderer = renderer
 
     # --- Depth buffer ---
@@ -303,7 +305,11 @@ def main(argv: list[str] | None = None) -> None:
                 view_matrix,
                 proj_matrix,
                 extra_args={
-                    "pointSize": args.point_size,
+                    "color_params": color_params,
+                    "depth_fy": depth_params.intrinsics.fy,
+                    "sprite_scale": args.sprite_scale,
+                    "depthWidth": dw,
+                    "depthHeight": dh,
                 },
             )
 
