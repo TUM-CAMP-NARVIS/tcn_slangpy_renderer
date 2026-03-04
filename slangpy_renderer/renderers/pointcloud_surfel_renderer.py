@@ -37,7 +37,20 @@ class PointcloudSurfelRenderer:
         self.pipeline = device.create_render_pipeline(
             program=self.program,
             input_layout=None,
-            targets=[{"format": output_format}],
+            targets=[{
+                "format": output_format,
+                "enable_blend": True,
+                "color": {
+                    "src_factor": spy.BlendFactor.src_alpha,
+                    "dst_factor": spy.BlendFactor.inv_src_alpha,
+                    "op": spy.BlendOp.add,
+                },
+                "alpha": {
+                    "src_factor": spy.BlendFactor.one,
+                    "dst_factor": spy.BlendFactor.inv_src_alpha,
+                    "op": spy.BlendOp.add,
+                },
+            }],
             primitive_topology=spy.PrimitiveTopology.triangle_strip,
             depth_stencil={
                 "format": spy.Format.d32_float,
@@ -117,6 +130,9 @@ class PointcloudSurfelRenderer:
         # Sprite sizing
         cursor.depth_fy = extra_args.get("depth_fy", 500.0)
         cursor.sprite_scale = extra_args.get("sprite_scale", 1.5)
+
+        # Edge falloff
+        cursor.falloff_exponent = extra_args.get("falloff_exponent", 4.0)
 
         # Depth dimensions for structured grid
         cursor.depthWidth = extra_args.get("depthWidth", 0)

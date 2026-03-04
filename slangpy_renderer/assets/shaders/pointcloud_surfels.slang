@@ -36,6 +36,10 @@ uniform int depthHeight;
 uniform bool useStaticColor;
 uniform float4 staticColor;
 
+// Edge falloff: alpha = 1 - pow(dist, falloff_exponent)
+// Higher exponent preserves detail in center, soft blend at edges.
+uniform float falloff_exponent;  // default 4.0 (set from Python)
+
 // --- Inter-stage structures ---
 
 struct VertexToGeometry {
@@ -44,6 +48,7 @@ struct VertexToGeometry {
 
 struct GeometryToFragment {
     float2 uv     : TEXCOORD0;
+    float  dist   : TEXCOORD1;  // 0 at center, 1 at hex edge
     float4 pos    : SV_Position;
 };
 
@@ -159,19 +164,22 @@ void geometry_main(
 
         GeometryToFragment out_v;
 
-        // Center vertex
+        // Center vertex (dist = 0: fully opaque)
         out_v.pos = center_clip;
         out_v.uv = center_uv;
+        out_v.dist = 0.f;
         outStream.Append(out_v);
 
-        // Current hex vertex
+        // Current hex vertex (dist = 1: edge)
         out_v.pos = world_to_clip(hex_world[i]);
         out_v.uv = hex_uv[i];
+        out_v.dist = 1.f;
         outStream.Append(out_v);
 
-        // Next hex vertex
+        // Next hex vertex (dist = 1: edge)
         out_v.pos = world_to_clip(hex_world[next]);
         out_v.uv = hex_uv[next];
+        out_v.dist = 1.f;
         outStream.Append(out_v);
 
         outStream.RestartStrip();
@@ -186,10 +194,18 @@ float4 fragment_main(GeometryToFragment input) : SV_Target {
     if (input.uv.x < 0.f || input.uv.x > 1.f || input.uv.y < 0.f || input.uv.y > 1.f)
         discard;
 
+    // Distance-based alpha falloff: opaque at center, transparent at edge.
+    // pow(dist, n) with n > 1 keeps the center opaque and falls off at the edge.
+    float alpha = saturate(1.f - pow(saturate(input.dist), falloff_exponent));
+
     if (useStaticColor)
-        return staticColor;
+    {
+        float4 sc = staticColor;
+        sc.a *= alpha;
+        return sc;
+    }
 
     float4 c = colorTex.Sample(sampler_colorTex, input.uv);
-    c.a = 1.0f;
+    c.a = alpha;
     return c;
 }
